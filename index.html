@@ -531,7 +531,7 @@ textarea.fi2{resize:vertical;min-height:70px;}select.fi2{cursor:pointer;}
         <div class="card">
           <div class="stitle">Informations</div>
           <div class="fg"><label>Prénom et nom</label><input class="fi2" id="pf-name" placeholder="Marie Dupont"/></div>
-          <div class="fg"><label>Titre professionnel</label><input class="fi2" id="pf-title" placeholder="Ex. : Bénévole catéchèse · Mère de 3 enfants"/></div>
+          <div class="fg"><label>Titre professionnel</label><input class="fi2" id="pf-title" placeholder="Ex. : Directrice Marketing · Consultante RH"/></div>
           <div class="fg"><label>Ville</label><input class="fi2" id="pf-city" placeholder="Boulogne-Billancourt"/></div>
           <div class="fg"><label>Profil LinkedIn</label><div style="display:flex;gap:8px;"><input class="fi2" id="pf-linkedin" placeholder="https://linkedin.com/in/votre-profil" style="flex:1;"/><a id="li-link" href="#" target="_blank" style="display:none;padding:9px 14px;border-radius:var(--r);background:#0A66C2;color:#fff;font-size:12px;font-weight:500;">→</a></div></div>
           <div class="fg"><label>Secteur professionnel</label><select class="fi2" id="pf-sector"><option value="">— Sélectionner —</option><option>Banque &amp; Finance</option><option>Consulting &amp; Audit</option><option>Droit &amp; Juridique</option><option>Éducation &amp; Formation</option><option>Immobilier &amp; Construction</option><option>Industrie &amp; Ingénierie</option><option>Informatique &amp; Tech</option><option>Marketing &amp; Communication</option><option>Médical &amp; Santé</option><option>Mode &amp; Luxe</option><option>Ressources Humaines</option><option>Restauration &amp; Hôtellerie</option><option>Secteur Public &amp; Institutionnel</option><option>Services à la personne</option><option>Transport &amp; Logistique</option><option>Autre</option></select></div><div class="fg" id="sector-autre-wrap" style="display:none;"><label>Précisez votre secteur</label><input class="fi2" id="pf-sector-autre" placeholder="Ex. : Agriculture, Artisanat…"/></div>
@@ -540,8 +540,8 @@ textarea.fi2{resize:vertical;min-height:70px;}select.fi2{cursor:pointer;}
         <div class="card">
           <div class="stitle">Mon parcours</div>
           <div class="fg"><label>Situation professionnelle</label><select class="fi2" id="pf-stage"><option value="">— Sélectionner —</option><option>En recherche active</option><option>En poste, en veille active</option><option>En transition professionnelle</option><option>En reconversion professionnelle</option><option>En création / reprise d'entreprise</option><option>En mission / freelance</option><option>En pause professionnelle</option></select></div>
-          <div class="fg"><label>Objectif / projet</label><input class="fi2" id="pf-target" placeholder="Ex. : bénévolat, reconversion, rencontre…"/></div>
-          <div class="fg"><label>Pitch</label><textarea class="fi2" id="pf-pitch" placeholder="Ex. : Paroissien(ne) depuis 10 ans, je cherche…"></textarea></div>
+          <div class="fg"><label>Objectif / projet</label><input class="fi2" id="pf-target" placeholder="Ex. : Trouver un poste de DRH, lancer mon activité…"/></div>
+          <div class="fg"><label>Pitch</label><textarea class="fi2" id="pf-pitch" placeholder="Ex. : 15 ans en finance d'entreprise, je cherche à…"></textarea></div>
           <div class="stitle" style="margin-top:10px;">Ce que je cherche &amp; apporte</div>
           <div class="seek-offer">
             <div class="so-box seek"><div class="so-label seek">Je cherche / J'ai besoin</div><textarea class="so-ta" id="pf-seek" placeholder="Ex. : un accompagnement, du soutien…"></textarea></div>
@@ -626,8 +626,9 @@ async function initUser(user){
   uid=user.uid;
   const r=doc(db,"users",uid);
   const s=await getDoc(r);
-  if(!s.exists())await setDoc(r,{uid,displayName:user.displayName||"",email:user.email,createdAt:serverTimestamp(),reseauOffers:[],availability:[]});
-  const d=s.exists()?s.data():{};
+  if(!s.exists())await setDoc(r,{uid,displayName:user.displayName||"",email:user.email,createdAt:serverTimestamp(),reseauOffers:[]});
+  const snap2=s.exists()?s:await getDoc(r);
+  const d=snap2.exists()?snap2.data():{};
   window._isAdmin=d.role==="admin";
   const name=d.displayName||user.displayName||user.email.split("@")[0];
   const av=ini(name);
@@ -1173,19 +1174,28 @@ document.getElementById("pf-sector")&&document.getElementById("pf-sector").addEv
 window.handlePhotoUpload=function(input){
   if(!input.files||!input.files[0])return;
   const file=input.files[0];
-  if(file.size>2*1024*1024)return showToast("Photo trop lourde (max 2 Mo)");
   const reader=new FileReader();
   reader.onload=function(e){
-    const b64=e.target.result;
-    // Afficher immédiatement dans le header
-    const av=document.getElementById("ph-av");
-    av.innerHTML='<img src="'+b64+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt=""/>';
-    // Sauvegarder dans Firestore
-    if(uid){
-      setDoc(doc(db,"users",uid),{photoBase64:b64,updatedAt:serverTimestamp()},{merge:true})
-        .then(()=>showToast("Photo enregistrée !"))
-        .catch(()=>showToast("Erreur sauvegarde photo"));
-    }
+    const img=new Image();
+    img.onload=function(){
+      const MAX=300;
+      const canvas=document.createElement("canvas");
+      let w=img.width,h=img.height;
+      if(w>h){if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}}else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
+      canvas.width=w;canvas.height=h;
+      canvas.getContext("2d").drawImage(img,0,0,w,h);
+      const b64=canvas.toDataURL("image/jpeg",0.75);
+      // Afficher immédiatement
+      const av=document.getElementById("ph-av");
+      av.innerHTML='<img src="'+b64+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt=""/>';
+      // Sauvegarder en Firestore
+      if(uid){
+        setDoc(doc(db,"users",uid),{photoBase64:b64,updatedAt:serverTimestamp()},{merge:true})
+          .then(()=>showToast("Photo enregistrée !"))
+          .catch((err)=>{console.error("Photo save error:",err);showToast("Erreur sauvegarde photo");});
+      }
+    };
+    img.src=e.target.result;
   };
   reader.readAsDataURL(file);
 };
