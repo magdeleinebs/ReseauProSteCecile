@@ -386,6 +386,9 @@ textarea.fi2{resize:vertical;min-height:70px;}select.fi2{cursor:pointer;}
             <button class="btn btn-p btn-sm" onclick="showAddPepite()">Écrire</button>
           </div>
           <div id="pepites-list"><div style="font-size:12px;color:var(--ink3);font-style:italic;padding:6px 0;">Aucune pépite partagée pour le moment.</div></div>
+          <div id="pepites-more" style="display:none;text-align:center;margin-top:4px;">
+            <button onclick="togglePepites()" id="pepites-toggle-btn" style="background:none;border:none;color:var(--t);font-size:12px;cursor:pointer;font-weight:500;">▼ Voir toutes les pépites</button>
+          </div>
         </div>
         <div class="coopt">
           <div class="coopt-head"><div><div class="coopt-title">Entraide &amp; annonces exclusives</div><div class="coopt-sub">Partagées entre paroissiens</div></div><button class="coopt-btn" onclick="goScr('offres')">Voir tout</button></div>
@@ -524,7 +527,7 @@ textarea.fi2{resize:vertical;min-height:70px;}select.fi2{cursor:pointer;}
     <!-- PROFIL -->
     <div id="scr-profil" class="scr">
       <div class="p">
-        <div class="ph"><div class="ph-av" id="ph-av">?</div><div class="ph-name" id="ph-name">—</div><div class="ph-title" id="ph-title">—</div><div class="comp-row"><span class="comp-lbl">Profil complété</span><div class="comp-bar"><div class="comp-fill" id="comp-fill" style="width:0%"></div></div><span class="comp-pct" id="comp-pct">0%</span></div></div>
+        <div class="ph"><div style="position:relative;display:inline-block;margin-bottom:10px;cursor:pointer;" onclick="document.getElementById('pf-photo-input').click()" title="Changer ma photo"><div class="ph-av" id="ph-av" style="overflow:hidden;">?</div><div style="position:absolute;bottom:0;right:0;width:18px;height:18px;border-radius:50%;background:var(--t);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;border:2px solid #fff;">✎</div></div><input type="file" id="pf-photo-input" accept="image/*" style="display:none;" onchange="handlePhotoUpload(this)"/><div class="ph-name" id="ph-name">—</div><div class="ph-title" id="ph-title">—</div><div class="comp-row"><span class="comp-lbl">Profil complété</span><div class="comp-bar"><div class="comp-fill" id="comp-fill" style="width:0%"></div></div><span class="comp-pct" id="comp-pct">0%</span></div></div>
         <div class="card">
           <div class="stitle">Informations</div>
           <div class="fg"><label>Prénom et nom</label><input class="fi2" id="pf-name" placeholder="Marie Dupont"/></div>
@@ -631,7 +634,11 @@ async function initUser(user){
   document.getElementById("uav").textContent=av;
   document.getElementById("gc-name").textContent=name.split(" ")[0];
   document.getElementById("gc-date").textContent=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
-  document.getElementById("ph-av").textContent=av;
+  if(d.photoBase64){
+    document.getElementById("ph-av").innerHTML='<img src="'+d.photoBase64+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt=""/>';
+  } else {
+    document.getElementById("ph-av").textContent=av;
+  }
   document.getElementById("ph-name").textContent=name;
   document.getElementById("pf-name").value=name;
   if(d.title){document.getElementById("pf-title").value=d.title;document.getElementById("ph-title").textContent=d.title;}
@@ -859,24 +866,48 @@ window.submitPepite=async()=>{
   }catch(e){console.error(e);showToast("Erreur");}
 };
 window.delPepite=async(id)=>{if(!confirm("Supprimer cette pépite ?"))return;await deleteDoc(doc(db,"pepites",id));loadPepites();showToast("Pépite supprimée");};
+var _allPepites=[];var _pepitesOpen=false;
 async function loadPepites(){
   const el=document.getElementById("pepites-list");if(!el)return;
   try{
-    const q=query(collection(db,"pepites"),orderBy("createdAt","desc"),limit(10));
+    const q=query(collection(db,"pepites"),orderBy("createdAt","desc"),limit(20));
     const snap=await getDocs(q);
-    if(snap.empty){el.innerHTML='<div style="font-size:12px;color:var(--ink3);font-style:italic;padding:6px 0;">Aucune pépite partagée pour le moment.</div>';return;}
-    el.innerHTML="";
-    snap.forEach(d=>{
-      const p=d.data();const ago=p.createdAt?tsAgo(p.createdAt):"";
-      const isOwn=p.authorId===uid;
-      const div=document.createElement("div");
-      div.style.cssText="padding:10px 0;border-bottom:1px solid var(--bg2);";
-      const isOwnBtn=isOwn?'<button onclick="window.delPepite(\"'+d.id+'\")" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:14px;flex-shrink:0;" title="Supprimer">×</button>':'';
-      div.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;"><div style="flex:1;"><div style="font-size:13px;color:var(--ink);line-height:1.5;">&#10024; '+p.text+'</div><div style="font-size:10px;color:var(--ink3);margin-top:4px;"><strong>'+(p.authorName||"Membre")+'</strong> &middot; '+ago+'</div></div>'+isOwnBtn+'</div>';
-      el.appendChild(div);
-    });
+    _allPepites=[];
+    snap.forEach(d=>{_allPepites.push({id:d.id,...d.data()});});
+    renderPepites();
   }catch(e){console.error(e);}
 }
+function renderPepites(){
+  const el=document.getElementById("pepites-list");
+  const moreEl=document.getElementById("pepites-more");
+  if(!el)return;
+  if(!_allPepites.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--ink3);font-style:italic;padding:6px 0;">Aucune pépite partagée pour le moment.</div>';
+    if(moreEl)moreEl.style.display="none";
+    return;
+  }
+  const toShow=_pepitesOpen?_allPepites:_allPepites.slice(0,1);
+  el.innerHTML="";
+  toShow.forEach(p=>{
+    const ago=p.createdAt?tsAgo(p.createdAt):"";
+    const isOwn=p.authorId===uid;
+    const div=document.createElement("div");
+    div.style.cssText="padding:10px 0;border-bottom:1px solid var(--bg2);";
+    const isOwnBtn=isOwn?'<button onclick="window.delPepite(\"'+p.id+'\")" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:14px;flex-shrink:0;" title="Supprimer">×</button>':'';
+    div.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;"><div style="flex:1;"><div style="font-size:13px;color:var(--ink);line-height:1.5;">&#10024; '+p.text+'</div><div style="font-size:10px;color:var(--ink3);margin-top:4px;"><strong>'+(p.authorName||"Membre")+'</strong> &middot; '+ago+'</div></div>'+isOwnBtn+'</div>';
+    el.appendChild(div);
+  });
+  if(moreEl){
+    if(_allPepites.length>1){
+      moreEl.style.display="block";
+      const btn=document.getElementById("pepites-toggle-btn");
+      if(btn)btn.innerHTML=_pepitesOpen?"▲ Réduire":"▼ Voir toutes les pépites ("+_allPepites.length+")";
+    } else {
+      moreEl.style.display="none";
+    }
+  }
+}
+window.togglePepites=function(){_pepitesOpen=!_pepitesOpen;renderPepites();};
 
 window.delOffre=async(id)=>{if(!confirm("Supprimer ?"))return;await deleteDoc(doc(db,"offres",id));loadOffres();showToast("Offre supprimée");refreshAdmin();};
 window.showAddOffre=()=>{
@@ -1025,7 +1056,8 @@ async function loadReseauOffers(){
 window.openMemberModal=function(memberId,data){
   const name=data.displayName||"Membre";
   const offerLabels={relation:"Mise en relation",pitch:"Aide au pitch",simulation:"Simulation d'entretien",cooptation:"Cooptation",coaching:"Coaching carrière",expertise:"Partage d'expertise",cv:"Relecture CV",mentorat:"Mentorat"};
-  document.getElementById("modal-body").innerHTML='<div style="text-align:center;padding-bottom:8px;"><div style="width:60px;height:60px;border-radius:50%;background:var(--t3);color:var(--t2);font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">'+ini(name)+'</div><div style="font-size:19px;font-weight:600;font-family:var(--fb);">'+name+'</div><div style="font-size:12px;color:var(--ink2);margin-top:3px;">'+(data.title||"")+(data.city?" · "+data.city:"")+'</div><div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap;">'+(data.linkedin?'<a style="display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:999px;background:#0A66C2;color:#fff;font-size:12px;font-weight:500;" href="'+data.linkedin+'" target="_blank">LinkedIn →</a>':"")+'<button style="display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:999px;background:var(--ink);color:#fff;font-size:12px;font-weight:500;border:none;cursor:pointer;font-family:var(--ff);" onclick="closeModal();ouvrirMsg(\''+name+"','"+memberId+"')\">Envoyer un message</button></div></div>"+(data.pitch?'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bg2);"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);margin-bottom:6px;">Pitch</div><p style="font-size:13px;color:var(--ink2);line-height:1.6;">'+data.pitch+"</p></div>":"")+(data.seek?'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bg2);"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--purple);margin-bottom:6px;">Ce qu\'il/elle cherche</div><p style="font-size:13px;color:var(--ink2);line-height:1.6;">'+data.seek+"</p></div>":"")+(data.offer?'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bg2);"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--gold);margin-bottom:6px;">Ce qu\'il/elle apporte</div><p style="font-size:13px;color:var(--ink2);line-height:1.6;">'+data.offer+"</p></div>":"")+(data.reseauOffers&&data.reseauOffers.length?'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bg2);"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);margin-bottom:6px;">Propose au réseau</div><div style="display:flex;flex-wrap:wrap;gap:5px;">'+data.reseauOffers.map(o=>'<span style="font-size:11px;padding:4px 10px;border-radius:999px;border:1px solid var(--bg2);background:var(--bg);color:var(--ink2);">'+(offerLabels[o]||o)+"</span>").join("")+"</div></div>":"")+(data.availability&&data.availability.length?'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bg2);"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);margin-bottom:6px;">Disponibilités</div><div style="display:flex;flex-wrap:wrap;gap:5px;">'+data.availability.map(s=>'<span style="font-size:11px;padding:3px 9px;border-radius:999px;background:var(--t3);color:var(--t2);">'+s+"</span>").join("")+"</div></div>":"");
+  const photoHtml=data.photoBase64?'<img src="'+data.photoBase64+'" style="width:60px;height:60px;border-radius:50%;object-fit:cover;margin:0 auto 10px;display:block;" alt=""/>':'<div style=\"width:60px;height:60px;border-radius:50%;background:var(--t3);color:var(--t2);font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;\">'+ini(name)+'</div>';
+  document.getElementById("modal-body").innerHTML='<div style="text-align:center;padding-bottom:8px;">'+photoHtml+'<div style="font-size:19px;font-weight:600;font-family:var(--fb);">'+name+'</div><div style="font-size:12px;color:var(--ink2);margin-top:3px;">'+(data.title||"")+(data.city?" · "+data.city:"")+'</div><div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap;">'+(data.linkedin?'<a style="display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:999px;background:#0A66C2;color:#fff;font-size:12px;font-weight:500;" href="'+data.linkedin+'" target="_blank">LinkedIn →</a>':"")+'<button style="display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:999px;background:var(--ink);color:#fff;font-size:12px;font-weight:500;border:none;cursor:pointer;font-family:var(--ff);" onclick="closeModal();ouvrirMsg(\''+name+"','"+memberId+"')\">Envoyer un message</button></div></div>"+(data.pitch?'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bg2);"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);margin-bottom:6px;">Pitch</div><p style="font-size:13px;color:var(--ink2);line-height:1.6;">'+data.pitch+"</p></div>":"")+(data.seek?'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bg2);"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--purple);margin-bottom:6px;">Ce qu\'il/elle cherche</div><p style="font-size:13px;color:var(--ink2);line-height:1.6;">'+data.seek+"</p></div>":"")+(data.offer?'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bg2);"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--gold);margin-bottom:6px;">Ce qu\'il/elle apporte</div><p style="font-size:13px;color:var(--ink2);line-height:1.6;">'+data.offer+"</p></div>":"")+(data.reseauOffers&&data.reseauOffers.length?'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bg2);"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);margin-bottom:6px;">Propose au réseau</div><div style="display:flex;flex-wrap:wrap;gap:5px;">'+data.reseauOffers.map(o=>'<span style="font-size:11px;padding:4px 10px;border-radius:999px;border:1px solid var(--bg2);background:var(--bg);color:var(--ink2);">'+(offerLabels[o]||o)+"</span>").join("")+"</div></div>":"")+(data.availability&&data.availability.length?'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bg2);"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);margin-bottom:6px;">Disponibilités</div><div style="display:flex;flex-wrap:wrap;gap:5px;">'+data.availability.map(s=>'<span style="font-size:11px;padding:3px 9px;border-radius:999px;background:var(--t3);color:var(--t2);">'+s+"</span>").join("")+"</div></div>":"");
   openModal();
 };
 
@@ -1137,6 +1169,26 @@ function closeModal(){document.getElementById("modal").classList.remove("on");}
 document.getElementById("pf-sector")&&document.getElementById("pf-sector").addEventListener("change",function(){
   var w=document.getElementById("sector-autre-wrap");if(w)w.style.display=this.value==="Autre"?"block":"none";
 });
+
+window.handlePhotoUpload=function(input){
+  if(!input.files||!input.files[0])return;
+  const file=input.files[0];
+  if(file.size>2*1024*1024)return showToast("Photo trop lourde (max 2 Mo)");
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const b64=e.target.result;
+    // Afficher immédiatement dans le header
+    const av=document.getElementById("ph-av");
+    av.innerHTML='<img src="'+b64+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt=""/>';
+    // Sauvegarder dans Firestore
+    if(uid){
+      setDoc(doc(db,"users",uid),{photoBase64:b64,updatedAt:serverTimestamp()},{merge:true})
+        .then(()=>showToast("Photo enregistrée !"))
+        .catch(()=>showToast("Erreur sauvegarde photo"));
+    }
+  };
+  reader.readAsDataURL(file);
+};
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg||"Enregistré";t.classList.add("on");setTimeout(()=>t.classList.remove("on"),2200);}
 function openAdmin(){document.getElementById("admin-panel").style.display="block";if(window.refreshAdmin)window.refreshAdmin();}
 function closeAdmin(){document.getElementById("admin-panel").style.display="none";}
