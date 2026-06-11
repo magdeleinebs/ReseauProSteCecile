@@ -1447,17 +1447,6 @@ function closeComm(){
 
 </script>
 
-<script>
-function promptAdmin(){
-  var pwd=prompt("Mot de passe administrateur :");
-  if(pwd==="Dimitriisback2026*"){
-    document.getElementById("admin-panel").style.display="block";
-    if(window.refreshAdmin)window.refreshAdmin();
-  } else if(pwd!==null){
-    alert("Mot de passe incorrect.");
-  }
-}
-</script>
 </body>
 </html>
 <script>
@@ -1505,8 +1494,14 @@ setTimeout(renderCal,800);
 function promptAdmin(){
   var pwd=prompt("Mot de passe administrateur :");
   if(pwd==="Dimitriisback2026*"){
+    window._isAdmin=true;
     document.getElementById("admin-panel").style.display="block";
+    // Recharger les listes avec les boutons supprimer maintenant visibles
     if(window.refreshAdmin)window.refreshAdmin();
+    if(typeof loadArticles==="function")loadArticles();
+    if(typeof loadFeed==="function")loadFeed();
+    if(typeof loadOffres==="function")loadOffres();
+    if(typeof loadEvenements==="function")loadEvenements();
   } else if(pwd!==null){
     alert("Mot de passe incorrect.");
   }
