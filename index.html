@@ -122,10 +122,16 @@ textarea.fi2{resize:vertical;min-height:70px;}select.fi2{cursor:pointer;}
 .coopt-co{font-size:10px;color:rgba(255,255,255,.5);margin-top:1px;}
 .coopt-tag{font-size:9px;padding:2px 8px;border-radius:var(--rf);background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);}
 .coopt-apply{padding:4px 11px;border-radius:var(--rf);background:var(--t);color:#fff;border:none;font-size:10px;font-weight:600;cursor:pointer;font-family:var(--ff);margin-left:auto;flex-shrink:0;}
-.reseau-g{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.reseau-scroll-wrap{position:relative;margin-bottom:12px;}
+.reseau-g{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.reseau-g::-webkit-scrollbar{display:none;}
+.reseau-card{min-width:220px;max-width:260px;flex-shrink:0;scroll-snap-align:start;background:var(--w);border-radius:var(--rl);padding:11px;box-shadow:var(--sh);border:1px solid rgba(0,0,0,.05);}
 .reseau-card{background:var(--w);border-radius:var(--rl);padding:11px;box-shadow:var(--sh);border:1px solid rgba(0,0,0,.05);}
 .reseau-type{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
 .reseau-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.pepites-scroll{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.pepites-scroll::-webkit-scrollbar{display:none;}
+.pepite-card{min-width:240px;max-width:300px;flex-shrink:0;scroll-snap-align:start;background:var(--w);border-radius:var(--rl);padding:12px;box-shadow:var(--sh);border:1px solid rgba(0,0,0,.05);}
 .reseau-member{display:flex;gap:7px;align-items:center;padding:5px 0;border-bottom:1px solid var(--bg2);cursor:pointer;}
 .reseau-member:last-child{border-bottom:none;}
 .reseau-name{font-size:11px;font-weight:600;color:var(--ink);}
@@ -385,21 +391,24 @@ textarea.fi2{resize:vertical;min-height:70px;}select.fi2{cursor:pointer;}
             </div>
             <button class="btn btn-p btn-sm" onclick="showAddPepite()">Écrire</button>
           </div>
-          <div id="pepites-list"><div style="font-size:12px;color:var(--ink3);font-style:italic;padding:6px 0;">Aucune pépite partagée pour le moment.</div></div>
-          <div id="pepites-more" style="display:none;text-align:center;margin-top:4px;">
-            <button onclick="togglePepites()" id="pepites-toggle-btn" style="background:none;border:none;color:var(--t);font-size:12px;cursor:pointer;font-weight:500;">▼ Voir toutes les pépites</button>
-          </div>
+          <div id="pepites-list" class="pepites-scroll"><div style="font-size:12px;color:var(--ink3);font-style:italic;padding:6px 0;">Aucune pépite partagée pour le moment.</div></div>
         </div>
         <div class="coopt">
           <div class="coopt-head"><div><div class="coopt-title">Entraide &amp; annonces exclusives</div><div class="coopt-sub">Partagées entre paroissiens</div></div><button class="coopt-btn" onclick="goScr('offres')">Voir tout</button></div>
           <div id="coopt-list"><div style="font-size:12px;color:rgba(255,255,255,.4);font-style:italic;padding:6px 0;">Aucune offre pour le moment.</div></div>
         </div>
-        <div class="rowb" style="margin-bottom:10px;"><span class="stitle" style="margin-bottom:0;">Ce que les paroissiens proposent</span><span style="font-size:10px;color:var(--t);cursor:pointer;" onclick="goScr('profil')">Configurer →</span></div>
-        <div class="reseau-g">
-          <div class="reseau-card"><div class="reseau-type"><span class="reseau-dot" style="background:var(--t);"></span>Mise en relation</div><div id="rt-relation"><div style="font-size:11px;color:var(--ink3);font-style:italic;">Aucun membre disponible.</div></div></div>
-          <div class="reseau-card"><div class="reseau-type"><span class="reseau-dot" style="background:var(--gold);"></span>Aide au pitch</div><div id="rt-pitch"><div style="font-size:11px;color:var(--ink3);font-style:italic;">Aucun membre disponible.</div></div></div>
-          <div class="reseau-card"><div class="reseau-type"><span class="reseau-dot" style="background:var(--purple);"></span>Simulation d'entretien</div><div id="rt-simulation"><div style="font-size:11px;color:var(--ink3);font-style:italic;">Aucun membre disponible.</div></div></div>
-          <div class="reseau-card"><div class="reseau-type"><span class="reseau-dot" style="background:var(--red);"></span>Cooptation</div><div id="rt-cooptation"><div style="font-size:11px;color:var(--ink3);font-style:italic;">Aucun membre disponible.</div></div></div>
+        <div class="rowb" style="margin-bottom:10px;"><span class="stitle" style="margin-bottom:0;">Ce que les paroissiens proposent</span><span style="font-size:10px;color:var(--t);cursor:pointer;" onclick="showAllOffers()">Voir tout →</span></div>
+        <div class="reseau-scroll-wrap">
+          <div class="reseau-g" id="reseau-scroll-container">
+            <div class="reseau-card"><div class="reseau-type"><span class="reseau-dot" style="background:var(--t);"></span>Mise en relation</div><div id="rt-relation"><div style="font-size:11px;color:var(--ink3);font-style:italic;">Aucun membre disponible.</div></div></div>
+            <div class="reseau-card"><div class="reseau-type"><span class="reseau-dot" style="background:var(--gold);"></span>Aide au pitch</div><div id="rt-pitch"><div style="font-size:11px;color:var(--ink3);font-style:italic;">Aucun membre disponible.</div></div></div>
+            <div class="reseau-card"><div class="reseau-type"><span class="reseau-dot" style="background:var(--purple);"></span>Simulation d'entretien</div><div id="rt-simulation"><div style="font-size:11px;color:var(--ink3);font-style:italic;">Aucun membre disponible.</div></div></div>
+            <div class="reseau-card"><div class="reseau-type"><span class="reseau-dot" style="background:var(--red);"></span>Cooptation</div><div id="rt-cooptation"><div style="font-size:11px;color:var(--ink3);font-style:italic;">Aucun membre disponible.</div></div></div>
+            <div class="reseau-card"><div class="reseau-type"><span class="reseau-dot" style="background:var(--ink2);"></span>Coaching carrière</div><div id="rt-coaching"><div style="font-size:11px;color:var(--ink3);font-style:italic;">Aucun membre disponible.</div></div></div>
+            <div class="reseau-card"><div class="reseau-type"><span class="reseau-dot" style="background:var(--t2);"></span>Partage d'expertise</div><div id="rt-expertise"><div style="font-size:11px;color:var(--ink3);font-style:italic;">Aucun membre disponible.</div></div></div>
+            <div class="reseau-card"><div class="reseau-type"><span class="reseau-dot" style="background:var(--gold2);"></span>Relecture CV</div><div id="rt-cv"><div style="font-size:11px;color:var(--ink3);font-style:italic;">Aucun membre disponible.</div></div></div>
+            <div class="reseau-card"><div class="reseau-type"><span class="reseau-dot" style="background:var(--bg2);"></span>Mentorat</div><div id="rt-mentorat"><div style="font-size:11px;color:var(--ink3);font-style:italic;">Aucun membre disponible.</div></div></div>
+          </div>
         </div>
         <div class="rowb" style="margin-bottom:8px;"><span class="stitle" style="margin-bottom:0;">Nouveaux paroissiens</span></div>
         <div id="nbs-row" class="nbs-row"><div style="font-size:12px;color:var(--ink3);font-style:italic;padding:10px 0;">Les nouveaux arrivants apparaîtront ici.</div></div>
@@ -814,13 +823,13 @@ async function loadFeed(){
   }catch(e){console.error("loadFeed",e);}
 }
 window.showPostVictory=()=>{
-  document.getElementById("modal-body").innerHTML='<div class="mt">Partager avec la communauté</div><div class="fg"><label>Type</label><select class="fi2" id="v-type"><option>victoire</option><option>bon plan</option><option>question</option><option>ressource</option></select></div><div class="fg"><label>Message *</label><textarea class="fi2" id="v-text" style="min-height:80px;" placeholder="Partagez une victoire, un bon plan…"></textarea></div><button class="btn btn-p btn-fu" onclick="postVictory()">Publier</button>';
+  document.getElementById("modal-body").innerHTML='<div class="mt">Partager avec la communauté</div><div class="fg"><label>Type</label><select class="fi2" id="v-type"><option>bon plan</option><option>question</option><option>ressource</option><option>conseil</option></select></div><div class="fg"><label>Message *</label><textarea class="fi2" id="v-text" style="min-height:80px;" placeholder="Partagez un bon plan, une question, une ressource…"></textarea></div><button class="btn btn-p btn-fu" onclick="postVictory()">Publier</button>';
   openModal();
 };
 window.postVictory=async()=>{
   const t=document.getElementById("v-text")&&document.getElementById("v-text").value.trim();
   if(!t)return showToast("Message requis");
-  const type=document.getElementById("v-type")&&document.getElementById("v-type").value||"victoire";
+  const type=document.getElementById("v-type")&&document.getElementById("v-type").value||"bon plan";
   const authorName=document.getElementById("ph-name").textContent||"Membre";
   try{await addDoc(collection(db,"feed"),{text:t,type,authorId:uid,authorName,createdAt:serverTimestamp()});closeModal();showToast("Publié !");loadFeed();}
   catch(e){console.error(e);showToast("Erreur");}
@@ -854,7 +863,7 @@ async function loadOffres(){
   }catch(e){console.error("loadOffres",e);}
 }
 window.showAddPepite=()=>{
-  document.getElementById("modal-body").innerHTML='<div class="mt">✨ Partager une pépite</div><div style="font-size:12px;color:var(--ink3);margin-bottom:12px;">Une bonne nouvelle, une victoire, un moment de joie à partager avec la communauté</div><div class="fg"><label>Votre pépite *</label><textarea class="fi2" id="pep-text" style="min-height:90px;" placeholder="Ex. : J\'ai décroché un nouveau poste ! / J\'ai lancé mon activité…"></textarea></div><button class="btn btn-p btn-fu" onclick="submitPepite()">Partager</button>';
+  document.getElementById("modal-body").innerHTML='<div class="mt">✨ Partager une pépite</div><div style="font-size:12px;color:var(--ink3);margin-bottom:12px;">Une bonne nouvelle, un moment de joie à partager avec la communauté</div><div class="fg"><label>Votre pépite *</label><textarea class="fi2" id="pep-text" style="min-height:90px;" placeholder="Ex. : J\'ai décroché un nouveau poste ! / J\'ai lancé mon activité…"></textarea></div><button class="btn btn-p btn-fu" onclick="submitPepite()">Partager</button>';
   openModal();
 };
 window.submitPepite=async()=>{
@@ -993,10 +1002,44 @@ async function loadNewbies(){
   }catch(e){console.error("loadNewbies",e);}
 }
 
+window.showAllOffers=function(){
+  var allMembers=[];
+  document.querySelectorAll(".reseau-member").forEach(function(m){
+    allMembers.push(m.cloneNode(true));
+  });
+  var html='<div class="mt">Toutes les propositions</div>';
+  document.getElementById("modal-body").innerHTML=html;
+  var container=document.createElement("div");
+  // Recharger depuis les données
+  if(window._allReseauData&&window._allReseauData.length){
+    window._allReseauData.forEach(function(m){
+      var div=document.createElement("div");
+      div.className="reseau-member";
+      div.style.cssText="padding:10px 0;border-bottom:1px solid var(--bg2);cursor:pointer;display:flex;align-items:center;gap:10px;";
+      var avEl=document.createElement("div");
+      if(m.data.photoBase64){
+        avEl.innerHTML='<img src="'+m.data.photoBase64+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" alt=""/>';
+      } else {
+        avEl.className="av av-s";avEl.style.background="var(--t3)";avEl.style.color="var(--t2)";avEl.textContent=ini(m.name);
+      }
+      var info=document.createElement("div");info.style.flex="1";
+      info.innerHTML='<div class="reseau-name">'+m.name+'</div><div class="reseau-detail">'+m.offer+' · '+m.detail+'</div>';
+      div.appendChild(avEl);div.appendChild(info);
+      div.onclick=function(){closeModal();setTimeout(function(){openMemberModal(m.id,m.data);},200);};
+      container.appendChild(div);
+    });
+  } else {
+    container.innerHTML='<div style="color:var(--ink3);font-size:13px;font-style:italic;padding:12px 0;">Aucune proposition pour le moment.</div>';
+  }
+  document.getElementById("modal-body").appendChild(container);
+  openModal();
+};
+
 async function loadReseauOffers(){
   try{
+    window._allReseauData=[];
     const snap=await getDocs(collection(db,"users"));
-    const types={entretien:[],simulation:[],pitch:[],relation:[]};
+    const types={relation:[],pitch:[],simulation:[],cooptation:[],coaching:[],expertise:[],cv:[],mentorat:[]};
     snap.docs.forEach(d=>{
       const u=d.data();
       if(!u.reseauOffers||!u.reseauOffers.length)return;
@@ -1004,11 +1047,13 @@ async function loadReseauOffers(){
       const name=u.displayName||"Membre";
       u.reseauOffers.forEach(function(type){
         if(types[type]!==undefined){
-          types[type].push({id:d.id,name:name,detail:u.reseauDetail||u.sector||"",data:u,isMe:isMe});
+          const tL={relation:"Mise en relation",pitch:"Aide au pitch",simulation:"Simulation d'entretien",cooptation:"Cooptation",coaching:"Coaching carrière",expertise:"Partage d'expertise",cv:"Relecture CV",mentorat:"Mentorat"};
+          const entry={id:d.id,name:name,offer:tL[type]||type,detail:u.reseauDetail||u.sector||"",data:u,isMe:isMe};
+          types[type].push(entry);
+          if(!isMe)window._allReseauData.push(entry);
         }
       });
     });
-    var typeLabels={entretien:"Entretien réseau",simulation:"Simulation d'entretien",pitch:"Préparation pitch",relation:"Mise en relation"};
     Object.keys(types).forEach(function(type){
       var members=types[type];
       var el=document.getElementById("rt-"+type);
