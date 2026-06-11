@@ -768,10 +768,14 @@ async function loadArticles(){
       const a=d.data();
       const av=ini(a.authorName||"?");
       const date=a.createdAt&&a.createdAt.toDate?a.createdAt.toDate().toLocaleDateString("fr-FR",{day:"numeric",month:"short"}):"";
-      const delBtn=window._isAdmin?'<button onclick="event.stopPropagation();delArticle(\''+d.id+'\')" style="margin-left:auto;padding:2px 8px;border-radius:999px;border:1px solid var(--red);background:transparent;color:var(--red);font-size:10px;cursor:pointer;font-family:var(--ff);">Supprimer</button>':"";
+      const delBtn=window._isAdmin?'<button class="admin-del-art" data-id="'+d.id+'" style="margin-left:auto;padding:2px 8px;border-radius:999px;border:1px solid var(--red);background:transparent;color:var(--red);font-size:10px;cursor:pointer;font-family:var(--ff);">Supprimer</button>':"";
       const el=document.createElement("div");el.className="blog-post";
       el.innerHTML=(a.imageUrl?'<img class="bp-img" src="'+a.imageUrl+'" alt=""/>':"")+'<div class="bp-body"><div style="display:flex;gap:5px;margin-bottom:6px;"><span class="tg tg-t">'+a.category+"</span>"+delBtn+'</div><div class="bp-title">'+a.title+'</div><div class="bp-excerpt">'+(a.excerpt||"")+'</div><div class="bp-meta"><div class="bp-av" style="background:var(--t3);color:var(--t2);">'+av+'</div><span class="bp-author">'+a.authorName+'</span><span class="bp-date">'+date+"</span></div></div>";
-      el.onclick=e=>{if(e.target.tagName!=="BUTTON")openArticle(d.id,a);};
+      el.onclick=e=>{
+        const btn=e.target.closest('.admin-del-art');
+        if(btn){e.stopPropagation();delArticle(btn.dataset.id);return;}
+        openArticle(d.id,a);
+      };
       blogEl.appendChild(el);
       if(i<3){
         const h=document.createElement("div");h.className="art-mini";
@@ -783,6 +787,7 @@ async function loadArticles(){
   }catch(e){console.error("loadArticles",e);}
 }
 window.delArticle=async(id)=>{if(!confirm("Supprimer cet article ?"))return;await deleteDoc(doc(db,"articles",id));loadArticles();showToast("Article supprimé");refreshAdmin();};
+window.delFeed=async(id)=>{if(!confirm("Supprimer cette publication ?"))return;await deleteDoc(doc(db,"feed",id));loadFeed();showToast("Publication supprimée");};
 window.publishPost=async()=>{
   const t=document.getElementById("post-title").value.trim();if(!t)return showToast("Titre requis");
   const content=document.getElementById("post-content").innerHTML;
@@ -822,7 +827,9 @@ async function loadFeed(){
       const f=d.data();const av=ini(f.authorName||"?");
       const time=f.createdAt&&f.createdAt.toDate?fmtTime(f.createdAt.toDate()):"";
       const item=document.createElement("div");item.className="feed-item";
-      item.innerHTML='<div class="av av-s" style="background:var(--t3);color:var(--t2);">'+av+'</div><div class="fi-body"><div class="fi-name">'+f.authorName+' <span class="fi-type">· '+f.type+'</span></div><div class="fi-txt">'+f.text+'</div></div><span class="fi-time">'+time+"</span>";
+      const feedDelBtn=window._isAdmin?'<button class="feed-del-btn" data-id="'+d.id+'" style="margin-left:8px;background:none;border:1px solid var(--red);color:var(--red);border-radius:999px;font-size:10px;padding:1px 7px;cursor:pointer;flex-shrink:0;">Supprimer</button>':"";
+      item.innerHTML='<div class="av av-s" style="background:var(--t3);color:var(--t2);">'+av+'</div><div class="fi-body"><div class="fi-name">'+f.authorName+' <span class="fi-type">· '+f.type+'</span>'+feedDelBtn+'</div><div class="fi-txt">'+f.text+'</div></div><span class="fi-time">'+time+"</span>";
+      item.querySelector('.feed-del-btn')&&item.querySelector('.feed-del-btn').addEventListener('click',function(e){e.stopPropagation();delFeed(this.dataset.id);});
       el.appendChild(item);
     });
   }catch(e){console.error("loadFeed",e);}
@@ -1190,6 +1197,9 @@ async function refreshAdmin(){
     fill("adm-ev-list",evS,d=>d.title,d=>d.date+" · "+(d.inscrits||0)+" inscrits","delEv");
     fill("adm-of-list",ofS,d=>d.title,d=>d.company+" · "+d.type,"delOffre");
     fill("adm-art-list",arS,d=>d.title,d=>d.authorName+" · "+d.category,"delArticle");
+    const feedS=await getDocs(query(collection(db,"feed"),orderBy("createdAt","desc"),limit(30)));
+    const feedEl=document.getElementById("adm-feed-list");
+    if(feedEl){feedEl.innerHTML="";if(!feedS.size){feedEl.innerHTML='<div style="font-size:13px;color:var(--ink3);">Aucune publication.</div>';}else{feedS.forEach(d=>{const f=d.data();const item=document.createElement("div");item.className="admin-item";item.innerHTML='<div class="admin-info"><div class="admin-it">'+(f.authorName||"Membre")+' · '+f.type+'</div><div class="admin-is">'+(f.text||"").slice(0,60)+'...</div></div><button class="admin-del" onclick="delFeed(\''+d.id+'\')">Supprimer</button>';feedEl.appendChild(item);});}}
     const usrEl=document.getElementById("adm-usr-list");usrEl.innerHTML="";usS.forEach(d=>{const u=d.data();const item=document.createElement("div");item.className="admin-item";item.innerHTML='<div class="admin-info"><div class="admin-it">'+(u.displayName||u.email||"Membre")+'</div><div class="admin-is">'+(u.email||"")+"</div></div>";usrEl.appendChild(item);});
   }catch(e){console.error("refreshAdmin",e);}
 }
